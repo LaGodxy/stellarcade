@@ -19,6 +19,7 @@ const redis = require('./config/redis');
 // Middleware
 const correlationId = require('./middleware/correlation-id.middleware');
 const errorHandler = require('./middleware/errorHandler.middleware');
+const apiVersionMiddleware = require('./middleware/api-version.middleware');
 
 // Routes
 const routes = require('./routes');
@@ -37,19 +38,7 @@ app.use(morgan('combined', { stream: { write: (message) => logger.info(message.t
 /**
  * API Route Mounting
  */
-app.use('/api', routes);
-
-/**
- * Health Check Endpoint
- * Assumes database and redis are healthy if the server is running.
- */
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'Operational',
-    timestamp: new Date().toISOString(),
-    service: 'stellarcade-api',
-  });
-});
+app.use('/api', apiVersionMiddleware, routes);
 
 /**
  * Global Error Handling
@@ -61,10 +50,13 @@ app.use(errorHandler);
  * Server Lifecycle Management
  */
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => {
-  logger.info(`🚀 Stellarcade Backend is live on port ${PORT}`);
-  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+let server;
+if (process.env.NODE_ENV !== 'test') {
+  server = app.listen(PORT, () => {
+    logger.info(`🚀 Stellarcade Backend is live on port ${PORT}`);
+    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+}
 
 /**
  * Graceful Shutdown Logic
